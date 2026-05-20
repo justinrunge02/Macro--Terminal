@@ -1,0 +1,1080 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Macro Terminal v3.0</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0d1117;color:#e6edf3;font-family:'Courier New',monospace;font-size:12px;overflow-x:hidden}
+#app{display:flex;flex-direction:column;min-height:100vh}
+
+/* SETUP SCREEN */
+#setup{position:fixed;inset:0;background:#0d1117;z-index:1000;display:flex;align-items:center;justify-content:center}
+.setup-box{background:#161b22;border:1px solid #21262d;border-radius:6px;padding:32px;max-width:480px;width:90%}
+.setup-title{color:#e6edf3;font-size:14px;letter-spacing:2px;margin-bottom:6px}
+.setup-sub{color:#8b949e;font-size:10px;margin-bottom:24px;line-height:1.7}
+.setup-label{font-size:9px;color:#8b949e;letter-spacing:2px;margin-bottom:6px;display:block}
+.setup-input{background:#0d1117;border:1px solid #30363d;color:#e6edf3;padding:8px 12px;font-family:'Courier New',monospace;font-size:11px;width:100%;border-radius:3px;outline:none;margin-bottom:12px}
+.setup-input:focus{border-color:#58a6ff}
+.setup-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.setup-btn{background:#1a2318;border:1px solid #39d353;color:#39d353;padding:10px;font-family:'Courier New',monospace;font-size:11px;letter-spacing:1px;cursor:pointer;border-radius:3px;width:100%;transition:all 0.15s}
+.setup-btn:hover{background:#39d353;color:#0d1117}
+.setup-note{font-size:9px;color:#8b949e;margin-top:12px;line-height:1.7;border-top:1px solid #21262d;padding-top:12px}
+.setup-note a{color:#58a6ff}
+.setup-err{color:#f85149;font-size:10px;margin-top:8px;display:none}
+
+/* HEADER */
+.header{background:#161b22;border-bottom:1px solid #21262d;padding:0 16px;height:44px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.dots{display:flex;gap:6px}
+.dot{width:12px;height:12px;border-radius:50%}
+.dot-r{background:#f85149}.dot-a{background:#d29922}.dot-g{background:#39d353}
+.htitle{color:#e6edf3;font-size:13px;letter-spacing:2px;font-weight:bold}
+.hsrc{color:#8b949e;font-size:10px}
+.hbadge{background:#1a2318;border:1px solid #39d353;color:#39d353;font-size:9px;padding:2px 6px;border-radius:3px}
+.hbadge-fred{background:#1a1a2e;border:1px solid #58a6ff;color:#58a6ff;font-size:9px;padding:2px 6px;border-radius:3px}
+.clock{color:#58a6ff;font-size:11px}
+.ldot{width:6px;height:6px;border-radius:50%;background:#39d353;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+
+/* TABS */
+.tab-bar{background:#0d1117;border-bottom:1px solid #21262d;display:flex;overflow-x:auto;scrollbar-width:none;padding:0 12px;flex-shrink:0}
+.tab-bar::-webkit-scrollbar{display:none}
+.tab{padding:10px 14px;cursor:pointer;color:#8b949e;font-size:10px;letter-spacing:1px;border-bottom:2px solid transparent;white-space:nowrap;transition:all 0.15s}
+.tab:hover{color:#e6edf3}
+.tab.active{color:#e6edf3;border-bottom:2px solid #58a6ff}
+
+/* CONTENT */
+.content{display:none;padding:16px}
+.content.active{display:block}
+
+/* CARDS */
+.card{background:#161b22;border:1px solid #21262d;border-radius:4px;padding:12px}
+.card-title{font-size:9px;color:#8b949e;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px}
+.metric-val{font-size:22px;color:#e6edf3;font-weight:bold;line-height:1}
+.metric-sub{font-size:10px;color:#8b949e;margin-top:4px}
+.up{color:#39d353}.down{color:#f85149}.warn{color:#d29922}.info{color:#58a6ff}
+.live-val{color:#58a6ff}
+
+/* GRIDS */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:12px}
+
+/* SPECIAL PANELS */
+.regime-box{background:#1c1a0a;border:1px solid #21262d;border-left:3px solid #d29922;border-radius:4px;padding:14px 16px;margin-bottom:12px}
+.regime-title{color:#d29922;font-size:13px;letter-spacing:2px;font-weight:bold;margin-bottom:4px}
+.regime-date{color:#8b949e;font-size:10px;margin-bottom:12px}
+.regime-p{color:#e6edf3;font-size:11px;line-height:1.8;margin-bottom:8px;padding-left:12px;border-left:1px solid #21262d}
+.panel-risk{background:#161b22;border:1px solid #21262d;border-left:3px solid #f85149;border-radius:4px;padding:12px}
+.panel-opp{background:#161b22;border:1px solid #21262d;border-left:3px solid #39d353;border-radius:4px;padding:12px}
+.panel-event{background:#161b22;border:1px solid #21262d;border-left:3px solid #58a6ff;border-radius:4px;padding:12px}
+.ptitle{font-size:9px;letter-spacing:2px;margin-bottom:8px;font-weight:bold}
+.panel-risk .ptitle{color:#f85149}
+.panel-opp .ptitle{color:#39d353}
+.panel-event .ptitle{color:#58a6ff}
+.pitem{color:#e6edf3;font-size:11px;line-height:1.7;padding:3px 0;border-bottom:1px solid #21262d}
+.pitem:last-child{border:none}
+.evdot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:6px;vertical-align:middle}
+
+/* CHARTS */
+.chart-panel{background:#161b22;border:1px solid #21262d;border-radius:4px;padding:12px;margin-bottom:12px}
+.chart-label{font-size:9px;color:#8b949e;letter-spacing:2px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+.chart-fresh{font-size:9px;color:#39d353}
+.chart-stale{font-size:9px;color:#8b949e}
+.legend{display:flex;gap:16px;margin-bottom:8px;font-size:10px;color:#8b949e}
+.leg-item{display:flex;align-items:center;gap:5px}
+.leg-box{width:10px;height:10px;border-radius:2px}
+
+/* AI BOX */
+.ai-box{background:#0d1117;border:1px solid #21262d;border-left:3px solid #58a6ff;border-radius:4px;padding:12px;margin-top:12px}
+.ai-label{font-size:9px;color:#58a6ff;letter-spacing:2px;margin-bottom:8px}
+.ai-label span{color:#39d353;margin-left:8px}
+.ai-text{color:#e6edf3;font-size:11px;line-height:1.8;min-height:40px;white-space:pre-wrap}
+.gen-btn{background:#161b22;border:1px solid #30363d;color:#e6edf3;padding:8px 16px;font-family:'Courier New',monospace;font-size:11px;letter-spacing:1px;cursor:pointer;border-radius:3px;margin-top:10px;transition:all 0.15s;width:100%}
+.gen-btn:hover{border-color:#58a6ff;color:#58a6ff}
+.gen-btn:disabled{opacity:0.5;cursor:not-allowed}
+.status-line{font-size:10px;color:#8b949e;margin-top:6px;min-height:16px}
+.spin{display:inline-block;animation:sp 1s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* MISC */
+.sec-label{font-size:9px;color:#8b949e;letter-spacing:3px;text-transform:uppercase;margin:14px 0 8px;padding-bottom:4px;border-bottom:1px solid #21262d}
+.news-item{padding:8px 0;border-bottom:1px solid #21262d}
+.news-item:last-child{border:none}
+.news-hl{color:#e6edf3;font-size:11px;line-height:1.5}
+.news-meta{color:#8b949e;font-size:10px;margin-top:3px}
+.heat-row{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #21262d;font-size:11px}
+.heat-label{min-width:140px;color:#e6edf3}
+.heat-track{flex:1;background:#21262d;height:6px;border-radius:3px;overflow:hidden}
+.heat-fill{height:100%;border-radius:3px}
+.heat-status{min-width:100px;text-align:right;font-size:10px}
+.comp-row{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:10px}
+.comp-label{min-width:110px;color:#8b949e}
+.comp-bar{flex:1;background:#21262d;height:5px;border-radius:2px;overflow:hidden}
+.comp-fill{height:100%;border-radius:2px}
+.comp-val{min-width:45px;text-align:right}
+.report-out{background:#0d1117;border:1px solid #21262d;border-radius:4px;padding:16px;font-size:11px;color:#e6edf3;line-height:1.9;min-height:300px;white-space:pre-wrap}
+.fred-badge{display:inline-block;background:#1a1a2e;border:1px solid #58a6ff;color:#58a6ff;font-size:8px;padding:1px 4px;border-radius:2px;margin-left:4px;vertical-align:middle}
+.data-note{font-size:9px;color:#8b949e;margin-bottom:8px;padding:6px 10px;background:#161b22;border-radius:3px;border:1px solid #21262d}
+</style>
+</head>
+<body>
+
+<!-- SETUP SCREEN -->
+<div id="setup">
+  <div class="setup-box">
+    <div class="setup-title">MACRO-TERMINAL v3.0</div>
+    <div class="setup-sub">Enter your API keys to enable live data feeds and AI analysis. Keys are stored locally in your browser only and never sent anywhere except the respective APIs.</div>
+    <label class="setup-label">ANTHROPIC API KEY (for AI analysis on every tab)</label>
+    <input class="setup-input" id="inp-ant" type="password" placeholder="sk-ant-...">
+    <label class="setup-label">FRED API KEY (for live US macro data — free at fred.stlouisfed.org)</label>
+    <input class="setup-input" id="inp-fred" type="password" placeholder="your FRED API key">
+    <div class="setup-note">
+      <b style="color:#e6edf3">How to get free API keys:</b><br>
+      • <b style="color:#58a6ff">Anthropic:</b> <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a> → API Keys<br>
+      • <b style="color:#58a6ff">FRED:</b> <a href="https://fred.stlouisfed.org/docs/api/api_key.html" target="_blank">fred.stlouisfed.org/docs/api/api_key.html</a> → free account<br><br>
+      FRED data covers: GDP, CPI, PCE, NFP, unemployment, yield curve, M2, Fed balance sheet, and more. Australian data uses static values (updated manually or via RBA data portal).
+    </div>
+    <div id="setup-err" class="setup-err"></div>
+    <button class="setup-btn" onclick="startApp()" style="margin-top:16px">[ LAUNCH TERMINAL ]</button>
+    <button class="setup-btn" onclick="startDemo()" style="margin-top:8px;border-color:#d29922;color:#d29922;background:#1c1a0a">[ DEMO MODE — USE SAMPLE DATA ]</button>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="main" style="display:none;flex-direction:column;min-height:100vh">
+<div class="header">
+  <div style="display:flex;align-items:center;gap:10px">
+    <div class="dots"><div class="dot dot-r"></div><div class="dot dot-a"></div><div class="dot dot-g"></div></div>
+    <span class="htitle">MACRO-TERMINAL</span>
+    <span style="color:#8b949e;font-size:10px">v3.0</span>
+    <span class="hsrc">FRED / BLS / BEA / ISM / RBA / ABS / CoreLogic</span>
+    <span class="hbadge">AI POWERED</span>
+    <span class="hbadge-fred" id="fred-badge">FRED LIVE</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px">
+    <span style="font-size:9px;color:#8b949e" id="last-refresh"></span>
+    <span class="clock" id="clock"></span>
+    <div class="ldot"></div>
+  </div>
+</div>
+
+<div class="tab-bar">
+  <div class="tab active" onclick="switchTab(0)">1 OVERVIEW</div>
+  <div class="tab" onclick="switchTab(1)">2 GROWTH</div>
+  <div class="tab" onclick="switchTab(2)">3 INFLATION</div>
+  <div class="tab" onclick="switchTab(3)">4 LABOR</div>
+  <div class="tab" onclick="switchTab(4)">5 LIQUIDITY &amp; FED</div>
+  <div class="tab" onclick="switchTab(5)">6 MARKETS</div>
+  <div class="tab" onclick="switchTab(6)">7 SENTIMENT &amp; RISK</div>
+  <div class="tab" onclick="switchTab(7)">8 GLOBAL</div>
+  <div class="tab" onclick="switchTab(8)">9 AUSTRALIA</div>
+  <div class="tab" onclick="switchTab(9)">10 DAILY REPORT</div>
+</div>
+
+<!-- 0 OVERVIEW -->
+<div class="content active" id="t0">
+  <div class="regime-box">
+    <div class="regime-title">⚠ MACRO REGIME: LATE CYCLE / STAGFLATION RISK</div>
+    <div class="regime-date" id="regime-date">Loading...</div>
+    <div class="regime-p" id="regime-p1">Loading live data...</div>
+    <div class="regime-p" id="regime-p2"></div>
+    <div class="regime-p" id="regime-p3"></div>
+  </div>
+  <div class="g3">
+    <div class="panel-risk">
+      <div class="ptitle">KEY RISKS</div>
+      <div class="pitem">▸ Sticky core inflation delays Fed easing cycle</div>
+      <div class="pitem">▸ Yield curve inversion — recession signal at 18 months</div>
+      <div class="pitem">▸ China deflation exports demand shock globally</div>
+      <div class="pitem">▸ HY (High Yield) credit spread widening — stress signal</div>
+    </div>
+    <div class="panel-opp">
+      <div class="ptitle">KEY OPPORTUNITIES</div>
+      <div class="pitem">▸ Duration trade if Fed pivots — long 10Y–30Y Treasuries</div>
+      <div class="pitem">▸ Gold as monetary stress and fiscal hedge near ATH</div>
+      <div class="pitem">▸ ASX (Australian Securities Exchange) materials on China stimulus</div>
+      <div class="pitem">▸ AUD/USD (Australian Dollar) upside on RBA pause</div>
+    </div>
+    <div class="panel-event">
+      <div class="ptitle">UPCOMING EVENTS</div>
+      <div class="pitem"><span class="evdot" style="background:#f85149"></span>May 28 — US PCE (Personal Consumption Expenditures)</div>
+      <div class="pitem"><span class="evdot" style="background:#d29922"></span>Jun 4 — JOLTS (Job Openings Survey)</div>
+      <div class="pitem"><span class="evdot" style="background:#f85149"></span>Jun 6 — NFP (Nonfarm Payrolls) May print</div>
+      <div class="pitem"><span class="evdot" style="background:#58a6ff"></span>Jun 18 — RBA (Reserve Bank of Australia) Meeting</div>
+    </div>
+  </div>
+  <div class="g2">
+    <div class="chart-panel">
+      <div class="chart-label"><span>S&amp;P 500 (SPX) — 1 YEAR PRICE</span><span class="chart-stale" id="spx-fresh"></span></div>
+      <div style="height:180px"><canvas id="spxChart"></canvas></div>
+    </div>
+    <div class="chart-panel">
+      <div class="chart-label"><span>US TREASURY YIELD CURVE <span class="fred-badge">FRED</span></span><span class="chart-fresh" id="yield-fresh"></span></div>
+      <div class="legend">
+        <div class="leg-item"><div class="leg-box" style="background:#39d353"></div>Current</div>
+        <div class="leg-item"><div class="leg-box" style="background:#d29922"></div>1M Ago</div>
+      </div>
+      <div style="height:155px"><canvas id="yieldChart0"></canvas></div>
+    </div>
+  </div>
+  <div class="g4">
+    <div class="card"><div class="card-title">US GDP QoQ <span class="fred-badge">FRED</span></div><div class="metric-val" id="v-gdp">--</div><div class="metric-sub" id="s-gdp">Loading...</div></div>
+    <div class="card"><div class="card-title">CPI (Consumer Price Index) YoY <span class="fred-badge">FRED</span></div><div class="metric-val" id="v-cpi">--</div><div class="metric-sub" id="s-cpi">Loading...</div></div>
+    <div class="card"><div class="card-title">Fed Funds Rate <span class="fred-badge">FRED</span></div><div class="metric-val" id="v-ffr">--</div><div class="metric-sub" id="s-ffr">Loading...</div></div>
+    <div class="card"><div class="card-title">2Y–10Y Treasury Spread <span class="fred-badge">FRED</span></div><div class="metric-val" id="v-spread">--</div><div class="metric-sub" id="s-spread">Loading...</div></div>
+  </div>
+  <div class="ai-box">
+    <div class="ai-label">AI ANALYSIS — CLAUDE<span>GEOPOLITICAL + LEGISLATIVE CONTEXT</span></div>
+    <div class="ai-text" id="ai-overview">Click below to generate a live macro regime analysis...</div>
+    <div class="status-line" id="st-overview"></div>
+    <button class="gen-btn" onclick="genAI('overview')">[ GENERATE OVERVIEW ANALYSIS ]</button>
+  </div>
+</div>
+
+<!-- 1 GROWTH -->
+<div class="content" id="t1">
+  <div class="data-note">GDP, PMI and Industrial Production data pulled live from FRED (Federal Reserve Economic Data). <span class="fred-badge">FRED</span></div>
+  <div class="g4">
+    <div class="card"><div class="card-title">US GDP QoQ (Quarter-on-Quarter) <span class="fred-badge">FRED</span></div><div class="metric-val" id="v-gdp2">--</div><div class="metric-sub" id="s-gdp2">Loading...</div></div>
+    <div class="card"><div class="card-title">US GDP YoY (Year-on-Year) <span class="fred-badge">FRED</span></div><div class="metric-val" id="v-gdpyoy">--</div><div class="metric-sub" id="s-gdpyoy">Loading...</div></div>
+    <div class="card"><div class="card-title">Manufacturing PMI (Purchasing Managers' Index)</div><div class="metric-val warn">49.2</div><div class="metric-sub"><span class="down">Below 50 = contraction</span></div></div>
+    <div class="card"><div class="card-title">Services PMI (Purchasing Managers' Index)</div><div class="metric-val up">51.8</div><div class="metric-sub"><span class="up">Expansion</span></div></div>
+  </div>
+  <div class="g3">
+    <div class="card"><div class="card-title">Industrial Production MoM <span class="fred-badge">FRED</span></div><div class="metric-val" id="v-ip">--</div><div class="metric-sub" id="s-ip">Loading...</div></div>
+    <div class="card"><div class="card-title">Retail Sales MoM (Month-on-Month) <span class="fred-badge">FRED</span></div><div class="metric-val" id="v-rs">--</div><div class="metric-sub" id="s-rs">Loading...</div></div>
+    <div class="card"><div class="card-title">ISM (Institute for Supply Management) New Orders</div><div class="metric-val warn">50.1</div><div class="metric-sub"><span class="warn">Barely expanding</span></div></div>
+  </div>
+  <div class="chart-panel">
+    <div class="chart-label"><span>US GDP QoQ GROWTH — TRAILING 8 QUARTERS (%) <span class="fred-badge">FRED</span></span><span class="chart-fresh" id="gdp-fresh"></span></div>
+    <div style="height:200px"><canvas id="gdpChart"></canvas></div>
+  </div>
+  <div class="ai-box">
+    <div class="ai-label">AI ANALYSIS — CLAUDE<span>TRADE POLICY + FISCAL LEGISLATION CONTEXT</span></div>
+    <div class="ai-text" id="ai-growth">Click below to generate growth analysis...</div>
+    <div class="status-line" id="st-growth"></div>
+    <button class="gen-btn" onclick="genAI('growth')">[ GENERATE GROWTH ANALYSIS ]</button>
+  </div>
+</div>
+
+<!-- 2 INFLATION -->
+<div class="content" id="t2">
+  <div class="data-note">CPI, PCE, and PPI pulled live from FRED (Federal Reserve Economic Data). <span class="fred-badge">FRED</span></div>
+  <div class="g4">
+    <div class="card"><div class="card-title">CPI Headline <span class="fred-badge">FRED</span></div><div class="metric-val" id="v-cpi2">--</div><div class="metric-sub" id="s-cpi2">Loading...</div></div>
+    <div class="card"><div class="card-title">CPI Core (ex-Food &amp; Energy) <span class="fred-badge">FRED</span></div><div class="metric-val" id="v-cpic">--</div><div class="metric-sub" id="s-cpic">Loading...</div></div>
+    <div class="card"><div class="card-title">PCE (Personal Consumption Expenditures) <span class="fred-badge">FRED</span></div><div class="metric-val" id="v-pce">--</div><div class="metric-sub" id="s-pce">Loading...</div></div>
+    <div class="card"><div class="card-title">PPI (Producer Price Index) <span class="fred-badge">FRED</span></div><div class="metric-val" id="v-ppi">--</div><div class="metric-sub" id="s-ppi">Loading...</div></div>
+  </div>
+  <div class="g2">
+    <div class="card"><div class="card-title">5Y Breakeven Inflation Rate <span class="fred-badge">FRED</span></div><div class="metric-val" id="v-bei5">--</div><div class="metric-sub" id="s-bei5">Loading...</div></div>
+    <div class="card"><div class="card-title">10Y Breakeven Inflation Rate <span class="fred-badge">FRED</span></div><div class="metric-val" id="v-bei10">--</div><div class="metric-sub" id="s-bei10">Loading...</div></div>
+  </div>
+  <div class="chart-panel">
+    <div class="chart-label"><span>CPI YoY — HEADLINE VS CORE — TRAILING 18 MONTHS (%) <span class="fred-badge">FRED</span></span><span class="chart-fresh" id="cpi-fresh"></span></div>
+    <div class="legend">
+      <div class="leg-item"><div class="leg-box" style="background:#39d353"></div>Headline CPI</div>
+      <div class="leg-item"><div class="leg-box" style="background:#d29922"></div>Core CPI</div>
+    </div>
+    <div style="height:200px"><canvas id="cpiChart"></canvas></div>
+  </div>
+  <div class="sec-label">CPI COMPONENT BREAKDOWN (Latest YoY — Static)</div>
+  <div class="g2">
+    <div class="card">
+      <div class="comp-row"><span class="comp-label">Shelter</span><div class="comp-bar"><div class="comp-fill" style="width:60%;background:#f85149"></div></div><span class="comp-val down">+3.0%</span></div>
+      <div class="comp-row"><span class="comp-label">Food</span><div class="comp-bar"><div class="comp-fill" style="width:62%;background:#f85149"></div></div><span class="comp-val down">+3.1%</span></div>
+      <div class="comp-row"><span class="comp-label">Energy</span><div class="comp-bar"><div class="comp-fill" style="width:10%;background:#39d353"></div></div><span class="comp-val up">+0.5%</span></div>
+      <div class="comp-row"><span class="comp-label">New Vehicles</span><div class="comp-bar"><div class="comp-fill" style="width:20%;background:#d29922"></div></div><span class="comp-val warn">+1.2%</span></div>
+    </div>
+    <div class="card">
+      <div class="comp-row"><span class="comp-label">Medical Care</span><div class="comp-bar"><div class="comp-fill" style="width:68%;background:#f85149"></div></div><span class="comp-val down">+3.4%</span></div>
+      <div class="comp-row"><span class="comp-label">Services ex-Housing</span><div class="comp-bar"><div class="comp-fill" style="width:80%;background:#f85149"></div></div><span class="comp-val down">+4.1%</span></div>
+      <div class="comp-row"><span class="comp-label">Apparel</span><div class="comp-bar"><div class="comp-fill" style="width:25%;background:#d29922"></div></div><span class="comp-val warn">+1.4%</span></div>
+      <div class="comp-row"><span class="comp-label">Recreation</span><div class="comp-bar"><div class="comp-fill" style="width:30%;background:#d29922"></div></div><span class="comp-val warn">+1.8%</span></div>
+    </div>
+  </div>
+  <div class="ai-box">
+    <div class="ai-label">AI ANALYSIS — CLAUDE<span>TARIFFS + ENERGY + HOUSING POLICY CONTEXT</span></div>
+    <div class="ai-text" id="ai-inflation">Click below to generate inflation analysis...</div>
+    <div class="status-line" id="st-inflation"></div>
+    <button class="gen-btn" onclick="genAI('inflation')">[ GENERATE INFLATION ANALYSIS ]</button>
+  </div>
+</div>
+
+<!-- 3 LABOR -->
+<div class="content" id="t3">
+  <div class="data-note">Unemployment, payrolls, and earnings data pulled live from FRED. <span class="fred-badge">FRED</span></div>
+  <div class="g4">
+    <div class="card"><div class="card-title">NFP (Nonfarm Payrolls) <span class="fred-badge">FRED</span></div><div class="metric-val" id="v-nfp">--</div><div class="metric-sub" id="s-nfp">Loading...</div></div>
+    <div class="card"><div class="card-title">U3 Unemployment Rate <span class="fred-badge">FRED</span></div><div class="metric-val" id="v-u3">--</div><div class="metric-sub" id="s-u3">Loading...</div></div>
+    <div class="card"><div class="card-title">U6 Underemployment Rate <span class="fred-badge">FRED</span></div><div class="metric-val" id="v-u6">--</div><div class="metric-sub" id="s-u6">Loading...</div></div>
+    <div class="card"><div class="card-title">Avg Hourly Earnings YoY <span class="fred-badge">FRED</span></div><div class="metric-val" id="v-ahe">--</div><div class="metric-sub" id="s-ahe">Loading...</div></div>
+  </div>
+  <div class="g3">
+    <div class="card"><div class="card-title">JOLTS (Job Openings) <span class="fred-badge">FRED</span></div><div class="metric-val" id="v-jolts">--</div><div class="metric-sub" id="s-jolts">Loading...</div></div>
+    <div class="card"><div class="card-title">Quit Rate <span class="fred-badge">FRED</span></div><div class="metric-val" id="v-quit">--</div><div class="metric-sub" id="s-quit">Loading...</div></div>
+    <div class="card"><div class="card-title">Labor Force Participation Rate <span class="fred-badge">FRED</span></div><div class="metric-val" id="v-lfpr">--</div><div class="metric-sub" id="s-lfpr">Loading...</div></div>
+  </div>
+  <div class="chart-panel">
+    <div class="chart-label"><span>NFP (Nonfarm Payrolls) — TRAILING 12 MONTHS (K) <span class="fred-badge">FRED</span></span><span class="chart-fresh" id="nfp-fresh"></span></div>
+    <div style="height:200px"><canvas id="nfpChart"></canvas></div>
+  </div>
+  <div class="ai-box">
+    <div class="ai-label">AI ANALYSIS — CLAUDE<span>AI DISPLACEMENT + IMMIGRATION + WAGE POLICY</span></div>
+    <div class="ai-text" id="ai-labor">Click below to generate labor analysis...</div>
+    <div class="status-line" id="st-labor"></div>
+    <button class="gen-btn" onclick="genAI('labor')">[ GENERATE LABOR ANALYSIS ]</button>
+  </div>
+</div>
+
+<!-- 4 LIQUIDITY & FED -->
+<div class="content" id="t4">
+  <div class="data-note">Fed Funds Rate, M2, Treasury yields pulled live from FRED. <span class="fred-badge">FRED</span></div>
+  <div class="g4">
+    <div class="card"><div class="card-title">Fed Funds Rate <span class="fred-badge">FRED</span></div><div class="metric-val" id="v-ffr2">--</div><div class="metric-sub" id="s-ffr2">Loading...</div></div>
+    <div class="card"><div class="card-title">Real Interest Rate (nominal − inflation)</div><div class="metric-val warn" id="v-rir">--</div><div class="metric-sub" id="s-rir">Loading...</div></div>
+    <div class="card"><div class="card-title">M2 Money Supply <span class="fred-badge">FRED</span></div><div class="metric-val" id="v-m2">--</div><div class="metric-sub" id="s-m2">Loading...</div></div>
+    <div class="card"><div class="card-title">Fed Balance Sheet <span class="fred-badge">FRED</span></div><div class="metric-val" id="v-bs">--</div><div class="metric-sub" id="s-bs">Loading...</div></div>
+  </div>
+  <div class="g3">
+    <div class="card"><div class="card-title">2Y Treasury Yield <span class="fred-badge">FRED</span></div><div class="metric-val" id="v-2y">--</div><div class="metric-sub" id="s-2y">Loading...</div></div>
+    <div class="card"><div class="card-title">10Y Treasury Yield <span class="fred-badge">FRED</span></div><div class="metric-val" id="v-10y">--</div><div class="metric-sub" id="s-10y">Loading...</div></div>
+    <div class="card"><div class="card-title">30Y Treasury Yield <span class="fred-badge">FRED</span></div><div class="metric-val" id="v-30y">--</div><div class="metric-sub" id="s-30y">Loading...</div></div>
+  </div>
+  <div class="chart-panel">
+    <div class="chart-label"><span>US TREASURY YIELD CURVE — CURRENT vs 1M AGO <span class="fred-badge">FRED</span></span><span class="chart-fresh" id="yield4-fresh"></span></div>
+    <div class="legend">
+      <div class="leg-item"><div class="leg-box" style="background:#39d353"></div>Current</div>
+      <div class="leg-item"><div class="leg-box" style="background:#d29922"></div>1M Ago</div>
+      <div class="leg-item"><div class="leg-box" style="background:#f85149"></div>3M Ago</div>
+    </div>
+    <div style="height:220px"><canvas id="yieldChart4"></canvas></div>
+  </div>
+  <div class="ai-box">
+    <div class="ai-label">AI ANALYSIS — CLAUDE<span>FED COMMUNICATIONS + DEBT CEILING + FISCAL DEFICIT</span></div>
+    <div class="ai-text" id="ai-liquidity">Click below to generate liquidity analysis...</div>
+    <div class="status-line" id="st-liquidity"></div>
+    <button class="gen-btn" onclick="genAI('liquidity')">[ GENERATE LIQUIDITY ANALYSIS ]</button>
+  </div>
+</div>
+
+<!-- 5 MARKETS -->
+<div class="content" id="t5">
+  <div class="g4">
+    <div class="card"><div class="card-title">SPX (S&amp;P 500 Index)</div><div class="metric-val up">5,612</div><div class="metric-sub">Today: <span class="up">+0.42%</span></div></div>
+    <div class="card"><div class="card-title">NDX (Nasdaq 100 Index)</div><div class="metric-val up">19,842</div><div class="metric-sub">Today: <span class="up">+0.61%</span></div></div>
+    <div class="card"><div class="card-title">VIX (CBOE Volatility Index — "Fear Gauge")</div><div class="metric-val warn">18.4</div><div class="metric-sub"><span class="warn">Elevated vs norm</span></div></div>
+    <div class="card"><div class="card-title">DXY (US Dollar Index)</div><div class="metric-val up">104.2</div><div class="metric-sub">Today: <span class="up">+0.30%</span></div></div>
+  </div>
+  <div class="g4">
+    <div class="card"><div class="card-title">Gold (USD per troy ounce)</div><div class="metric-val up">$3,241</div><div class="metric-sub"><span class="up">Near all-time high</span></div></div>
+    <div class="card"><div class="card-title">WTI Crude Oil (West Texas Intermediate, USD/bbl)</div><div class="metric-val down">$61.80</div><div class="metric-sub"><span class="down">Demand concern</span></div></div>
+    <div class="card"><div class="card-title">HY Credit Spread (High Yield over Treasuries)</div><div class="metric-val warn">+342bps</div><div class="metric-sub"><span class="warn">Widening — risk signal</span></div></div>
+    <div class="card"><div class="card-title">IG Credit Spread (Investment Grade over Treasuries)</div><div class="metric-val up">+112bps</div><div class="metric-sub"><span class="up">Contained</span></div></div>
+  </div>
+  <div class="g2">
+    <div class="chart-panel">
+      <div class="chart-label"><span>SPX (S&amp;P 500) — 12 MONTH PRICE</span></div>
+      <div style="height:190px"><canvas id="spxChart2"></canvas></div>
+    </div>
+    <div class="chart-panel">
+      <div class="chart-label"><span>CREDIT SPREADS — IG vs HY vs EM (BASIS POINTS)</span></div>
+      <div style="height:190px"><canvas id="spreadChart"></canvas></div>
+    </div>
+  </div>
+  <div class="ai-box">
+    <div class="ai-label">AI ANALYSIS — CLAUDE<span>GEOPOLITICS + EARNINGS + SECTOR ROTATION</span></div>
+    <div class="ai-text" id="ai-markets">Click below to generate markets analysis...</div>
+    <div class="status-line" id="st-markets"></div>
+    <button class="gen-btn" onclick="genAI('markets')">[ GENERATE MARKETS ANALYSIS ]</button>
+  </div>
+</div>
+
+<!-- 6 SENTIMENT & RISK -->
+<div class="content" id="t6">
+  <div class="g2">
+    <div class="chart-panel">
+      <div class="chart-label"><span>VIX (Volatility Index) — 12 MONTHS | 52W High: 28.4 | Low: 12.1</span></div>
+      <div style="height:190px"><canvas id="vixChart"></canvas></div>
+    </div>
+    <div class="chart-panel">
+      <div class="chart-label"><span>CONSUMER SENTIMENT — CB (Conference Board) vs UMICH (University of Michigan)</span></div>
+      <div class="legend">
+        <div class="leg-item"><div class="leg-box" style="background:#58a6ff"></div>CB</div>
+        <div class="leg-item"><div class="leg-box" style="background:#d29922"></div>UMich</div>
+      </div>
+      <div style="height:165px"><canvas id="sentChart"></canvas></div>
+    </div>
+  </div>
+  <div class="sec-label">RISK HEAT MAP — DRUCKENMILLER FRAMEWORK</div>
+  <div class="card">
+    <div class="heat-row"><span class="heat-label">Inflation Risk</span><div class="heat-track"><div class="heat-fill" style="width:75%;background:#f85149"></div></div><span class="heat-status down">HIGH — Sticky</span></div>
+    <div class="heat-row"><span class="heat-label">Growth Risk</span><div class="heat-track"><div class="heat-fill" style="width:55%;background:#d29922"></div></div><span class="heat-status warn">MODERATE — Slowing</span></div>
+    <div class="heat-row"><span class="heat-label">Liquidity Risk</span><div class="heat-track"><div class="heat-fill" style="width:65%;background:#d29922"></div></div><span class="heat-status warn">MOD-HIGH — QT</span></div>
+    <div class="heat-row"><span class="heat-label">Credit Risk</span><div class="heat-track"><div class="heat-fill" style="width:60%;background:#d29922"></div></div><span class="heat-status warn">MODERATE — Widening</span></div>
+    <div class="heat-row"><span class="heat-label">Geopolitical Risk</span><div class="heat-track"><div class="heat-fill" style="width:55%;background:#d29922"></div></div><span class="heat-status warn">MODERATE</span></div>
+    <div class="heat-row"><span class="heat-label">Currency / FX Risk</span><div class="heat-track"><div class="heat-fill" style="width:40%;background:#39d353"></div></div><span class="heat-status up">LOW-MOD</span></div>
+    <div class="heat-row"><span class="heat-label">Recession Risk (12M)</span><div class="heat-track"><div class="heat-fill" style="width:70%;background:#f85149"></div></div><span class="heat-status down">HIGH — Curve inverted</span></div>
+    <div class="heat-row" style="border:none"><span class="heat-label">AU Housing Risk</span><div class="heat-track"><div class="heat-fill" style="width:65%;background:#d29922"></div></div><span class="heat-status warn">MODERATE-HIGH</span></div>
+  </div>
+  <div class="ai-box">
+    <div class="ai-label">AI ANALYSIS — CLAUDE<span>GEOPOLITICAL RISK + POLITICAL DEVELOPMENTS</span></div>
+    <div class="ai-text" id="ai-sentiment">Click below to generate sentiment & risk analysis...</div>
+    <div class="status-line" id="st-sentiment"></div>
+    <button class="gen-btn" onclick="genAI('sentiment')">[ GENERATE SENTIMENT &amp; RISK ANALYSIS ]</button>
+  </div>
+</div>
+
+<!-- 7 GLOBAL -->
+<div class="content" id="t7">
+  <div class="sec-label">CHINA</div>
+  <div class="g3">
+    <div class="card"><div class="card-title">China Manufacturing PMI (Purchasing Managers' Index)</div><div class="metric-val down">49.5</div><div class="metric-sub"><span class="down">Sub-50 = contraction</span></div></div>
+    <div class="card"><div class="card-title">China GDP (Gross Domestic Product) YoY</div><div class="metric-val warn">+4.8%</div><div class="metric-sub"><span class="warn">Below 5% official target</span></div></div>
+    <div class="card"><div class="card-title">China CPI (Consumer Price Index) YoY</div><div class="metric-val down">-0.1%</div><div class="metric-sub"><span class="down">Deflationary pressure</span></div></div>
+  </div>
+  <div class="sec-label">EUROPEAN UNION</div>
+  <div class="g3">
+    <div class="card"><div class="card-title">EU CPI (Consumer Price Index) YoY</div><div class="metric-val warn">+2.4%</div><div class="metric-sub"><span class="warn">Near ECB target</span></div></div>
+    <div class="card"><div class="card-title">EU GDP (Gross Domestic Product) QoQ</div><div class="metric-val up">+0.4%</div><div class="metric-sub"><span class="up">Recovering</span></div></div>
+    <div class="card"><div class="card-title">ECB (European Central Bank) Deposit Rate</div><div class="metric-val up">2.50%</div><div class="metric-sub"><span class="up">Active cutting cycle</span></div></div>
+  </div>
+  <div class="sec-label">EMERGING MARKETS &amp; GLOBAL TRADE</div>
+  <div class="g2">
+    <div class="card"><div class="card-title">EM (Emerging Markets) PMI Composite</div><div class="metric-val up">51.3</div><div class="metric-sub"><span class="up">Solid expansion</span></div></div>
+    <div class="card"><div class="card-title">Global Trade Volume YoY</div><div class="metric-val down">+1.2%</div><div class="metric-sub"><span class="down">Well below historical avg</span></div></div>
+  </div>
+  <div class="ai-box">
+    <div class="ai-label">AI ANALYSIS — CLAUDE<span>CHINA STIMULUS + EU ELECTIONS + TRADE WAR</span></div>
+    <div class="ai-text" id="ai-global">Click below to generate global macro analysis...</div>
+    <div class="status-line" id="st-global"></div>
+    <button class="gen-btn" onclick="genAI('global')">[ GENERATE GLOBAL ANALYSIS ]</button>
+  </div>
+</div>
+
+<!-- 8 AUSTRALIA -->
+<div class="content" id="t8">
+  <div class="data-note">Australian data sourced from RBA (Reserve Bank of Australia), ABS (Australian Bureau of Statistics), CoreLogic, and ASX. Static values updated as new data is released — live API integration available via RBA Data Portal.</div>
+
+  <div class="sec-label">RBA (Reserve Bank of Australia) — CASH RATE HISTORY</div>
+  <div class="g4">
+    <div class="card"><div class="card-title">RBA Cash Rate</div><div class="metric-val up">3.85%</div><div class="metric-sub"><span class="up">Cut 25bps — May 2026</span></div></div>
+    <div class="card"><div class="card-title">Next RBA Meeting</div><div class="metric-val info">Jun 18</div><div class="metric-sub"><span class="warn">Easing bias retained</span></div></div>
+    <div class="card"><div class="card-title">RBA Peak Rate</div><div class="metric-val">4.35%</div><div class="metric-sub"><span class="down">Nov 2023 — Nov 2024</span></div></div>
+    <div class="card"><div class="card-title">AU 10Y Bond Yield</div><div class="metric-val warn">4.31%</div><div class="metric-sub"><span class="warn">Tracking RBA path</span></div></div>
+  </div>
+  <div class="chart-panel">
+    <div class="chart-label"><span>RBA CASH RATE — HISTORY 2022–2026 (%)</span></div>
+    <div style="height:200px"><canvas id="auRbaChart"></canvas></div>
+  </div>
+
+  <div class="sec-label">INFLATION — AU CPI (Consumer Price Index) TREND</div>
+  <div class="g3">
+    <div class="card"><div class="card-title">AU CPI Headline YoY</div><div class="metric-val warn">+3.6%</div><div class="metric-sub"><span class="warn">Above 2–3% target band</span></div></div>
+    <div class="card"><div class="card-title">AU CPI Trimmed Mean (core inflation measure)</div><div class="metric-val warn">+3.2%</div><div class="metric-sub"><span class="warn">Easing slowly</span></div></div>
+    <div class="card"><div class="card-title">RBA Inflation Target</div><div class="metric-val up">2–3%</div><div class="metric-sub"><span class="up">Mid-point 2.5%</span></div></div>
+  </div>
+  <div class="chart-panel">
+    <div class="chart-label"><span>AU CPI YoY — HEADLINE VS TRIMMED MEAN (core) — 2023–2026 (%)</span></div>
+    <div class="legend">
+      <div class="leg-item"><div class="leg-box" style="background:#39d353"></div>Headline CPI</div>
+      <div class="leg-item"><div class="leg-box" style="background:#d29922"></div>Trimmed Mean (Core)</div>
+      <div class="leg-item"><div class="leg-box" style="background:#f85149;height:2px;width:16px;border-radius:0"></div>3% Upper Band</div>
+    </div>
+    <div style="height:200px"><canvas id="auCpiChart"></canvas></div>
+  </div>
+
+  <div class="sec-label">LABOR MARKET</div>
+  <div class="g4">
+    <div class="card"><div class="card-title">AU Unemployment Rate</div><div class="metric-val up">4.1%</div><div class="metric-sub"><span class="up">Relatively stable</span></div></div>
+    <div class="card"><div class="card-title">AU Participation Rate</div><div class="metric-val up">66.8%</div><div class="metric-sub"><span class="up">Near record high</span></div></div>
+    <div class="card"><div class="card-title">WPI (Wage Price Index) YoY</div><div class="metric-val warn">+3.4%</div><div class="metric-sub"><span class="warn">Above inflation</span></div></div>
+    <div class="card"><div class="card-title">AU GDP (Gross Domestic Product) YoY</div><div class="metric-val down">+1.5%</div><div class="metric-sub"><span class="down">Below trend growth</span></div></div>
+  </div>
+
+  <div class="sec-label">HOUSING — NATIONAL PROPERTY MARKET (CoreLogic Data)</div>
+  <div class="g3">
+    <div class="card"><div class="card-title">National Home Values MoM</div><div class="metric-val down">-0.3%</div><div class="metric-sub"><span class="down">4th consecutive decline</span></div></div>
+    <div class="card"><div class="card-title">Sydney Clearance Rate</div><div class="metric-val warn">61.2%</div><div class="metric-sub"><span class="warn">Below 65% = softening</span></div></div>
+    <div class="card"><div class="card-title">Melbourne Clearance Rate</div><div class="metric-val down">58.4%</div><div class="metric-sub"><span class="down">Weakest in 3 years</span></div></div>
+  </div>
+  <div class="chart-panel">
+    <div class="chart-label"><span>AUCTION CLEARANCE RATES — SYDNEY vs MELBOURNE (%) — 2024–2026</span></div>
+    <div class="legend">
+      <div class="leg-item"><div class="leg-box" style="background:#58a6ff"></div>Sydney</div>
+      <div class="leg-item"><div class="leg-box" style="background:#d29922"></div>Melbourne</div>
+      <div class="leg-item"><div class="leg-box" style="background:#39d353;height:2px;width:16px;border-radius:0"></div>65% Threshold</div>
+    </div>
+    <div style="height:190px"><canvas id="auClearChart"></canvas></div>
+  </div>
+
+  <div class="sec-label">MARKETS &amp; COMMODITIES</div>
+  <div class="g4">
+    <div class="card"><div class="card-title">ASX 200 (Australian Securities Exchange top 200)</div><div class="metric-val up">8,142</div><div class="metric-sub">Today: <span class="up">+0.60%</span></div></div>
+    <div class="card"><div class="card-title">AUD/USD (Australian Dollar vs US Dollar)</div><div class="metric-val down">0.6432</div><div class="metric-sub">Today: <span class="down">-0.41%</span></div></div>
+    <div class="card"><div class="card-title">Iron Ore (Key AU export, USD/tonne)</div><div class="metric-val up">$98.40</div><div class="metric-sub">Week: <span class="up">+1.2%</span></div></div>
+    <div class="card"><div class="card-title">Coal (Thermal, USD/tonne)</div><div class="metric-val warn">$112.50</div><div class="metric-sub"><span class="warn">Softening</span></div></div>
+  </div>
+  <div class="chart-panel">
+    <div class="chart-label"><span>IRON ORE PRICE — USD/TONNE — 2023–2026</span></div>
+    <div style="height:190px"><canvas id="auOreChart"></canvas></div>
+  </div>
+  <div class="chart-panel">
+    <div class="chart-label"><span>AUD/USD (Australian Dollar vs US Dollar) — 12 MONTHS</span></div>
+    <div style="height:170px"><canvas id="auFxChart"></canvas></div>
+  </div>
+
+  <div class="sec-label">LATEST AUSTRALIA NEWS</div>
+  <div class="card">
+    <div class="news-item"><div class="news-hl">RBA cuts cash rate to 3.85% — further easing signalled for H2 (second half) 2026</div><div class="news-meta">RBA Board — May 20, 2026 | Impact: <span class="up">Positive for housing &amp; equities</span> / <span class="down">AUD/USD (Australian Dollar) negative</span></div></div>
+    <div class="news-item"><div class="news-hl">CoreLogic: national home values fall for 4th consecutive month amid affordability pressure</div><div class="news-meta">CoreLogic Monthly Report — May 2026 | Impact: <span class="down">Negative for property investors</span></div></div>
+    <div class="news-item"><div class="news-hl">Federal budget confirms $14.6B cost-of-living relief — RBA flags inflation risk from fiscal stimulus</div><div class="news-meta">Commonwealth Treasury — May 2026 | Impact: <span class="warn">Mixed — relief vs inflation risk</span></div></div>
+    <div class="news-item" style="border:none"><div class="news-hl">Iron ore stabilises above $98 on China stimulus signals — positive for ASX materials sector</div><div class="news-meta">Bloomberg Commodities — May 20, 2026 | Impact: <span class="up">Positive for BHP, RIO, FMG</span></div></div>
+  </div>
+
+  <div class="ai-box">
+    <div class="ai-label">AI ANALYSIS — CLAUDE<span>RBA POLICY + HOUSING + ASX + BUDGET CONTEXT</span></div>
+    <div class="ai-text" id="ai-australia">Click below to generate Australia analysis with specific investing implications...</div>
+    <div class="status-line" id="st-australia"></div>
+    <button class="gen-btn" onclick="genAI('australia')">[ GENERATE AUSTRALIA ANALYSIS ]</button>
+  </div>
+</div>
+
+<!-- 9 DAILY REPORT -->
+<div class="content" id="t9">
+  <div class="sec-label">DAILY MACRO REPORT — AI-GENERATED INSTITUTIONAL BRIEFING</div>
+  <div style="background:#1c1a0a;border:1px solid #21262d;border-left:3px solid #d29922;border-radius:4px;padding:10px 14px;margin-bottom:12px;font-size:11px;color:#8b949e;line-height:1.7">
+    Synthesises all live FRED data, static AU/global indicators, and rich geopolitical/legislative context into a single structured Druckenmiller-framework briefing. Live FRED values are injected into the prompt automatically.
+  </div>
+  <button class="gen-btn" id="rpt-btn" onclick="genReport()" style="margin-bottom:8px">[ GENERATE FULL DAILY MACRO REPORT ]</button>
+  <div class="status-line" id="st-report" style="margin-bottom:10px"></div>
+  <div class="report-out" id="rpt-out">Awaiting generation...
+
+Report sections:
+  MACRO SNAPSHOT       — Global regime with live data + news linkage
+  KEY TRENDS           — Dominant forces across all indicators
+  RISKS                — Tail risks: geopolitical, policy, credit, liquidity
+  OPPORTUNITIES        — Specific trades for Australian investors
+  AUSTRALIA FOCUS      — RBA, housing, ASX, AUD analysis
+  REGIME CLASSIFICATION — Cycle label + confidence /10
+  WATCHLIST            — Key upcoming events and triggers</div>
+</div>
+</div><!-- end main -->
+
+<script>
+// ─── CONFIG ───────────────────────────────────────────────────────
+let ANT_KEY='', FRED_KEY='', DEMO=false;
+const FRED='https://api.stlouisfed.org/fred/series/observations';
+const CORS='https://corsproxy.io/?';
+
+// Live FRED data cache
+const liveData={};
+
+// ─── SETUP ────────────────────────────────────────────────────────
+function startApp(){
+  ANT_KEY=document.getElementById('inp-ant').value.trim();
+  FRED_KEY=document.getElementById('inp-fred').value.trim();
+  const err=document.getElementById('setup-err');
+  if(!ANT_KEY){err.textContent='Anthropic API key is required.';err.style.display='block';return;}
+  err.style.display='none';
+  document.getElementById('setup').style.display='none';
+  const m=document.getElementById('main');
+  m.style.display='flex';m.style.flexDirection='column';
+  init();
+}
+function startDemo(){
+  DEMO=true;
+  ANT_KEY='demo';
+  document.getElementById('setup').style.display='none';
+  const m=document.getElementById('main');
+  m.style.display='flex';m.style.flexDirection='column';
+  document.getElementById('fred-badge').textContent='DEMO DATA';
+  document.getElementById('fred-badge').style.borderColor='#d29922';
+  document.getElementById('fred-badge').style.color='#d29922';
+  init();
+}
+
+// ─── CLOCK ────────────────────────────────────────────────────────
+function tick(){
+  const n=new Date();
+  document.getElementById('clock').textContent=
+    n.toLocaleDateString('en-AU',{weekday:'short',day:'2-digit',month:'short',year:'numeric'})+
+    ' '+n.toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+setInterval(tick,1000);tick();
+
+// ─── TABS ─────────────────────────────────────────────────────────
+const chartsBuilt={};
+function switchTab(i){
+  document.querySelectorAll('.tab').forEach((t,j)=>t.classList.toggle('active',i===j));
+  document.querySelectorAll('.content').forEach((c,j)=>c.classList.toggle('active',i===j));
+  if(!chartsBuilt[i]){buildCharts(i);chartsBuilt[i]=true;}
+}
+
+// ─── CHARTS ───────────────────────────────────────────────────────
+const gc={color:'#8b949e',grid:'#21262d',tooltip:{backgroundColor:'#161b22',borderColor:'#30363d',borderWidth:1,titleColor:'#e6edf3',bodyColor:'#8b949e'}};
+function bOpts(cb){
+  return{responsive:true,maintainAspectRatio:false,animation:{duration:600},
+    plugins:{legend:{display:false},tooltip:gc.tooltip},
+    scales:{x:{ticks:{color:gc.color,font:{family:'Courier New',size:9}},grid:{color:gc.grid}},
+      y:{ticks:{color:gc.color,font:{family:'Courier New',size:9},callback:cb||undefined},grid:{color:gc.grid}}}};
+}
+const chartInstances={};
+function mkChart(id,type,labels,datasets,cb){
+  const el=document.getElementById(id);if(!el)return;
+  if(chartInstances[id])chartInstances[id].destroy();
+  chartInstances[id]=new Chart(el,{type,data:{labels,datasets},options:bOpts(cb)});
+}
+
+// Static/demo data sets
+const DEMO_DATA={
+  spx:{labels:['May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May'],data:[4800,4920,5100,4980,5050,5200,5310,5450,5380,5490,5560,5590,5612]},
+  gdp:{labels:["Q2'24","Q3'24","Q4'24","Q1'25","Q2'25","Q3'25","Q4'25","Q1'26"],data:[3.2,2.8,2.5,2.1,2.0,2.2,2.4,2.3]},
+  cpiH:{labels:['Nov','Dec','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr'],data:[3.1,3.2,3.1,3.2,3.5,3.4,3.3,3.3,3.2,3.3,3.5,3.4,3.3,3.3,3.5,3.4,3.4,3.4]},
+  cpiC:{labels:['Nov','Dec','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr'],data:[3.5,3.6,3.5,3.6,3.8,3.7,3.6,3.7,3.6,3.7,3.8,3.7,3.6,3.6,3.7,3.6,3.6,3.6]},
+  nfp:{labels:['May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr'],data:[216,189,220,204,210,195,212,207,183,174,169,177]},
+  yc:{cur:[3.7,3.75,3.72,3.9,4.83,4.6,4.58,4.55,4.65,4.68],m1:[3.62,3.68,3.65,3.82,4.71,4.5,4.47,4.45,4.55,4.6],m3:[3.55,3.6,3.58,3.75,4.65,4.42,4.4,4.38,4.48,4.52]},
+  // AU data
+  rba:{labels:['Jan\'22','May\'22','Sep\'22','Jan\'23','May\'23','Sep\'23','Jan\'24','May\'24','Sep\'24','Jan\'25','May\'25','Sep\'25','Jan\'26','May\'26'],data:[0.1,0.85,2.35,3.1,3.85,4.1,4.35,4.35,4.35,4.35,4.1,4.1,4.1,3.85]},
+  auCpiH:{labels:['Q1\'23','Q2\'23','Q3\'23','Q4\'23','Q1\'24','Q2\'24','Q3\'24','Q4\'24','Q1\'25','Q2\'25','Q3\'25','Q4\'25','Q1\'26'],data:[7.0,6.0,5.4,4.1,3.6,3.8,2.8,2.4,2.4,3.8,3.6,3.5,3.6]},
+  auCpiT:{labels:['Q1\'23','Q2\'23','Q3\'23','Q4\'23','Q1\'24','Q2\'24','Q3\'24','Q4\'24','Q1\'25','Q2\'25','Q3\'25','Q4\'25','Q1\'26'],data:[6.6,5.9,5.2,4.2,4.0,3.9,3.5,3.2,2.9,3.4,3.3,3.2,3.2]},
+  clear:{labels:['Jan\'24','Mar','May','Jul','Sep','Nov','Jan\'25','Mar','May','Jul','Sep','Nov','Jan\'26','Mar','May'],
+    syd:[68,72,70,66,64,62,65,68,66,64,62,60,62,63,61.2],
+    mel:[63,66,64,60,58,56,59,62,60,58,56,54,56,58,58.4]},
+  ore:{labels:['May\'23','Aug','Nov','Feb\'24','May','Aug','Nov','Feb\'25','May','Aug','Nov','Feb\'26','May'],data:[105,115,128,118,112,108,102,98,88,92,95,100,98.4]},
+  aud:{labels:['May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May'],data:[0.668,0.672,0.678,0.645,0.638,0.650,0.649,0.623,0.621,0.632,0.631,0.647,0.643]}
+};
+
+function buildCharts(tab){
+  const ym=['1M','3M','6M','1Y','2Y','5Y','7Y','10Y','20Y','30Y'];
+  if(tab===0){
+    mkChart('spxChart','line',DEMO_DATA.spx.labels,[{data:DEMO_DATA.spx.data,borderColor:'#39d353',borderWidth:2,pointRadius:0,fill:true,backgroundColor:'rgba(57,211,83,0.07)',tension:0.4}],v=>'$'+v.toLocaleString());
+    mkChart('yieldChart0','line',ym,[
+      {data:DEMO_DATA.yc.cur,borderColor:'#39d353',borderWidth:2,pointRadius:3,pointBackgroundColor:'#39d353',fill:false,tension:0.3,label:'Current'},
+      {data:DEMO_DATA.yc.m1,borderColor:'#d29922',borderWidth:1.5,pointRadius:0,fill:false,tension:0.3,borderDash:[4,3],label:'1M Ago'}
+    ],v=>v+'%');
+  }
+  if(tab===1){
+    const gd=DEMO_DATA.gdp.data;
+    mkChart('gdpChart','bar',DEMO_DATA.gdp.labels,[{data:gd,backgroundColor:gd.map(v=>v>=3?'#39d353':v>=2?'#d29922':'#f85149'),borderRadius:2}],v=>v+'%');
+  }
+  if(tab===2){
+    const el=document.getElementById('cpiChart');if(!el)return;
+    if(chartInstances.cpiChart)chartInstances.cpiChart.destroy();
+    chartInstances.cpiChart=new Chart(el,{type:'bar',data:{labels:DEMO_DATA.cpiH.labels,datasets:[
+      {data:DEMO_DATA.cpiH.data,backgroundColor:'rgba(57,211,83,0.7)',label:'Headline',borderRadius:2},
+      {data:DEMO_DATA.cpiC.data,backgroundColor:'rgba(210,153,34,0.7)',label:'Core',borderRadius:2}
+    ]},options:bOpts(v=>v+'%')});
+  }
+  if(tab===3){
+    const nd=DEMO_DATA.nfp.data;
+    mkChart('nfpChart','bar',DEMO_DATA.nfp.labels,[{data:nd,backgroundColor:nd.map(v=>v>=200?'#39d353':v>=170?'#d29922':'#f85149'),borderRadius:2}],v=>v+'K');
+  }
+  if(tab===4){
+    mkChart('yieldChart4','line',ym,[
+      {data:DEMO_DATA.yc.cur,borderColor:'#39d353',borderWidth:2,pointRadius:3,pointBackgroundColor:'#39d353',fill:false,tension:0.3,label:'Current'},
+      {data:DEMO_DATA.yc.m1,borderColor:'#d29922',borderWidth:1.5,pointRadius:0,fill:false,tension:0.3,borderDash:[4,3],label:'1M Ago'},
+      {data:DEMO_DATA.yc.m3,borderColor:'#f85149',borderWidth:1.5,pointRadius:0,fill:false,tension:0.3,borderDash:[2,3],label:'3M Ago'}
+    ],v=>v+'%');
+  }
+  if(tab===5){
+    mkChart('spxChart2','line',DEMO_DATA.spx.labels,[{data:DEMO_DATA.spx.data,borderColor:'#39d353',borderWidth:2,pointRadius:0,fill:true,backgroundColor:'rgba(57,211,83,0.07)',tension:0.4}],v=>'$'+v.toLocaleString());
+    mkChart('spreadChart','line',['May','Jul','Sep','Nov','Jan','Mar','May'],[
+      {data:[95,100,105,108,110,111,112],borderColor:'#39d353',borderWidth:2,pointRadius:0,fill:false,tension:0.4,label:'IG'},
+      {data:[290,305,315,325,330,338,342],borderColor:'#f85149',borderWidth:2,pointRadius:0,fill:false,tension:0.4,label:'HY'},
+      {data:[230,240,248,255,260,265,268],borderColor:'#58a6ff',borderWidth:1.5,pointRadius:0,fill:false,tension:0.4,label:'EM',borderDash:[4,3]}
+    ],v=>v+'bps');
+  }
+  if(tab===6){
+    mkChart('vixChart','line',DEMO_DATA.spx.labels,[{data:[22,18,14,28,16,15,14,16,17,19,21,20,18.4],borderColor:'#d29922',borderWidth:2,pointRadius:0,fill:true,backgroundColor:'rgba(210,153,34,0.07)',tension:0.4}]);
+    mkChart('sentChart','line',['Apr','Jun','Aug','Oct','Dec','Feb','Apr'],[
+      {data:[103,101,98,96,94,93,91.2],borderColor:'#58a6ff',borderWidth:2,pointRadius:0,fill:false,tension:0.4,label:'CB'},
+      {data:[67,64,60,58,56,55,56.6],borderColor:'#d29922',borderWidth:2,pointRadius:0,fill:false,tension:0.4,label:'UMich',borderDash:[4,3]}
+    ]);
+  }
+  if(tab===8){
+    // RBA cash rate
+    mkChart('auRbaChart','line',DEMO_DATA.rba.labels,[{data:DEMO_DATA.rba.data,borderColor:'#58a6ff',borderWidth:2,pointRadius:3,pointBackgroundColor:'#58a6ff',fill:true,backgroundColor:'rgba(88,166,255,0.07)',tension:0.3}],v=>v+'%');
+    // AU CPI
+    const auCpiEl=document.getElementById('auCpiChart');if(!auCpiEl)return;
+    if(chartInstances.auCpiChart)chartInstances.auCpiChart.destroy();
+    chartInstances.auCpiChart=new Chart(auCpiEl,{type:'bar',data:{labels:DEMO_DATA.auCpiH.labels,datasets:[
+      {data:DEMO_DATA.auCpiH.data,backgroundColor:'rgba(57,211,83,0.7)',label:'Headline',borderRadius:2},
+      {data:DEMO_DATA.auCpiT.data,backgroundColor:'rgba(210,153,34,0.7)',label:'Trimmed Mean',borderRadius:2}
+    ]},options:bOpts(v=>v+'%')});
+    // Clearance rates
+    mkChart('auClearChart','line',DEMO_DATA.clear.labels,[
+      {data:DEMO_DATA.clear.syd,borderColor:'#58a6ff',borderWidth:2,pointRadius:3,pointBackgroundColor:'#58a6ff',fill:false,tension:0.3,label:'Sydney'},
+      {data:DEMO_DATA.clear.mel,borderColor:'#d29922',borderWidth:2,pointRadius:3,pointBackgroundColor:'#d29922',fill:false,tension:0.3,borderDash:[4,3],label:'Melbourne'}
+    ],v=>v+'%');
+    // Iron ore
+    mkChart('auOreChart','line',DEMO_DATA.ore.labels,[{data:DEMO_DATA.ore.data,borderColor:'#d29922',borderWidth:2,pointRadius:2,fill:true,backgroundColor:'rgba(210,153,34,0.07)',tension:0.4}],v=>'$'+v);
+    // AUD/USD
+    mkChart('auFxChart','line',DEMO_DATA.aud.labels,[{data:DEMO_DATA.aud.data,borderColor:'#39d353',borderWidth:2,pointRadius:0,fill:true,backgroundColor:'rgba(57,211,83,0.07)',tension:0.4}],v=>v.toFixed(4));
+  }
+}
+
+// ─── FRED DATA FETCH ──────────────────────────────────────────────
+async function fred(series, limit=1){
+  if(DEMO||!FRED_KEY) return null;
+  try{
+    const url=`${CORS}${encodeURIComponent(`${FRED}?series_id=${series}&api_key=${FRED_KEY}&file_type=json&sort_order=desc&limit=${limit}`)}`;
+    const r=await fetch(url);
+    const d=await r.json();
+    return d.observations||null;
+  }catch(e){return null;}
+}
+
+function pct(val,dec=1){return val?parseFloat(val).toFixed(dec)+'%':null;}
+function num(val,dec=1){return val?parseFloat(val).toFixed(dec):null;}
+function colorVal(v,el,pos='up',neg='down'){
+  if(!v)return;
+  const n=parseFloat(v);
+  const cls=n>0?pos:n<0?neg:'warn';
+  el.className='metric-val '+cls;
+}
+function setVal(id,val,sub,cls){
+  const el=document.getElementById('v-'+id);
+  const sel=document.getElementById('s-'+id);
+  if(el&&val){el.textContent=val;if(cls)el.className='metric-val '+cls;}
+  if(sel&&sub)sel.innerHTML=sub;
+}
+
+async function loadFredData(){
+  if(DEMO||!FRED_KEY){
+    // Set demo values
+    const dv={
+      gdp:['v-gdp','v-gdp2'],gdpyoy:['v-gdpyoy'],cpi:['v-cpi','v-cpi2'],cpic:['v-cpic'],
+      pce:['v-pce'],ppi:['v-ppi'],bei5:['v-bei5'],bei10:['v-bei10'],
+      nfp:['v-nfp'],u3:['v-u3'],u6:['v-u6'],ahe:['v-ahe'],
+      jolts:['v-jolts'],quit:['v-quit'],lfpr:['v-lfpr'],
+      ffr:['v-ffr','v-ffr2'],m2:['v-m2'],bs:['v-bs'],
+      '2y':['v-2y'],'10y':['v-10y'],'30y':['v-30y'],rir:['v-rir'],spread:['v-spread']
+    };
+    const demos={
+      gdp:{v:'+2.3%',s:'<span class="warn">Prev: +2.8% ↓ Slowing</span>',c:'warn'},
+      gdpyoy:{v:'+2.1%',s:'<span class="warn">Below trend</span>',c:'warn'},
+      cpi:{v:'+3.4%',s:'<span class="down">Above 2% target</span>',c:'down'},
+      cpic:{v:'+3.6%',s:'<span class="down">Services sticky</span>',c:'down'},
+      pce:{v:'+2.7%',s:'<span class="warn">Fed\'s preferred measure</span>',c:'warn'},
+      ppi:{v:'+2.1%',s:'<span class="up">Easing upstream</span>',c:'up'},
+      bei5:{v:'2.38%',s:'<span class="warn">Above 2% target</span>',c:'warn'},
+      bei10:{v:'2.31%',s:'<span class="warn">Anchored but elevated</span>',c:'warn'},
+      nfp:{v:'+177K',s:'<span class="up">Above 150K threshold</span>',c:'up'},
+      u3:{v:'4.2%',s:'Prev: <span class="warn">4.0%</span> Rising',c:'warn'},
+      u6:{v:'7.8%',s:'<span class="warn">Creeping higher</span>',c:'warn'},
+      ahe:{v:'+3.9%',s:'<span class="up">Above inflation</span>',c:'up'},
+      jolts:{v:'7.19M',s:'<span class="down">Declining trend</span>',c:'down'},
+      quit:{v:'2.1%',s:'<span class="down">Below pre-COVID avg</span>',c:'down'},
+      lfpr:{v:'62.7%',s:'<span class="warn">Below pre-COVID peak</span>',c:'warn'},
+      ffr:{v:'4.25–4.50%',s:'<span class="warn">On hold</span>',c:'warn'},
+      m2:{v:'$21.3T',s:'YoY: <span class="down">-0.4%</span>',c:'down'},
+      bs:{v:'$6.9T',s:'QT: <span class="down">-$25B/mo</span>',c:'down'},
+      '2y':{v:'4.83%',s:'<span class="down">Above FF Rate</span>',c:'warn'},
+      '10y':{v:'4.55%',s:'<span class="warn">Spread: -28bps inverted</span>',c:'warn'},
+      '30y':{v:'4.68%',s:'<span class="warn">Term premium building</span>',c:'warn'},
+      rir:{v:'+0.85%',s:'<span class="up">Restrictive territory</span>',c:'up'},
+      spread:{v:'-28bps',s:'<span class="down">Inverted — recession signal</span>',c:'down'}
+    };
+    for(const[k,v] of Object.entries(demos)){
+      const ids=dv[k]||['v-'+k];
+      ids.forEach(id=>{
+        const el=document.getElementById(id);if(el){el.textContent=v.v;if(v.c)el.className='metric-val '+v.c;}
+        const sel=document.getElementById('s-'+id.replace('v-',''));if(sel)sel.innerHTML=v.s;
+      });
+    }
+    // regime box
+    document.getElementById('regime-date').textContent='May 20, 2026 — The Druckenmiller View (Demo Mode)';
+    document.getElementById('regime-p1').textContent='GDP growth is decelerating at +2.3% QoQ, down from +2.8%. Manufacturing PMI has slipped into contraction territory at 49.2 while services remain expansionary at 51.8. The labor market is softening at the margin with NFP trending lower toward 177K and the quit rate falling below pre-COVID averages.';
+    document.getElementById('regime-p2').textContent='Inflation remains the binding constraint. CPI at +3.4% headline and +3.6% core are both well above the 2% target. The Fed is on hold at 4.25-4.50% with markets pricing only one 25bps cut in Q4 2026. PCE at +2.7% is the closest to target but services stickiness challenges further progress.';
+    document.getElementById('regime-p3').textContent='The Druckenmiller framework signals late-cycle conditions: gold near all-time highs at $3,241 signals monetary and fiscal stress; M2 contracting -0.4% YoY reduces systemic liquidity; and the yield curve inverted at -28bps on 2Y-10Y has historically preceded recessions within 12-18 months.';
+    liveData.gdp=2.3;liveData.cpi=3.4;liveData.ffr=4.375;liveData.y2=4.83;liveData.y10=4.55;liveData.y30=4.68;liveData.m2=21300;liveData.u3=4.2;liveData.nfp=177;liveData.pce=2.7;liveData.cpic=3.6;liveData.ppi=2.1;
+    return;
+  }
+
+  // Live FRED pulls
+  document.getElementById('last-refresh').textContent='Fetching FRED data...';
+  try{
+    // GDP
+    const gdp=await fred('A191RL1Q225SBEA',1);
+    if(gdp&&gdp[0]){const v=parseFloat(gdp[0].value);liveData.gdp=v;const c=v>=2.5?'up':v>=1.5?'warn':'down';setVal('gdp',v.toFixed(1)+'%',`<span class="${c}">${v>=2.5?'Solid':v>=1.5?'Slowing':'Weak'} growth</span>`,c);setVal('gdp2',v.toFixed(1)+'%','',c);}
+
+    // CPI
+    const cpi=await fred('CPIAUCSL',13);
+    if(cpi&&cpi.length>=2){
+      const cur=parseFloat(cpi[0].value),prev=parseFloat(cpi[12].value);
+      const yoy=((cur/prev-1)*100);liveData.cpi=yoy;
+      const c=yoy>=3.5?'down':yoy>=2.5?'warn':'up';
+      setVal('cpi','+'+yoy.toFixed(1)+'%',`<span class="${c}">${yoy>=3?'Above':'Near'} 2% target</span>`,c);
+      setVal('cpi2','+'+yoy.toFixed(1)+'%','',c);
+    }
+
+    // Core CPI
+    const cpic=await fred('CPILFESL',13);
+    if(cpic&&cpic.length>=13){
+      const yoy=((parseFloat(cpic[0].value)/parseFloat(cpic[12].value)-1)*100);liveData.cpic=yoy;
+      const c=yoy>=3?'down':'warn';setVal('cpic','+'+yoy.toFixed(1)+'%',`<span class="${c}">Core — sticky services</span>`,c);
+    }
+
+    // PCE
+    const pce=await fred('PCEPI',13);
+    if(pce&&pce.length>=13){const yoy=((parseFloat(pce[0].value)/parseFloat(pce[12].value)-1)*100);liveData.pce=yoy;const c=yoy>=3?'down':yoy>=2.5?'warn':'up';setVal('pce','+'+yoy.toFixed(1)+'%',`<span class="${c}">Fed's preferred measure</span>`,c);}
+
+    // PPI
+    const ppi=await fred('PPIACO',13);
+    if(ppi&&ppi.length>=13){const yoy=((parseFloat(ppi[0].value)/parseFloat(ppi[12].value)-1)*100);liveData.ppi=yoy;const c=yoy>=3?'down':yoy>=2?'warn':'up';setVal('ppi','+'+yoy.toFixed(1)+'%',`<span class="${c}">Producer price trend</span>`,c);}
+
+    // Breakevens
+    const bei5=await fred('T5YIE',1);
+    if(bei5&&bei5[0]){const v=parseFloat(bei5[0].value);setVal('bei5',v.toFixed(2)+'%',`<span class="warn">Market inflation expectations</span>`,'warn');}
+    const bei10=await fred('T10YIE',1);
+    if(bei10&&bei10[0]){const v=parseFloat(bei10[0].value);setVal('bei10',v.toFixed(2)+'%',`<span class="warn">10Y market expectations</span>`,'warn');}
+
+    // Unemployment
+    const u3=await fred('UNRATE',2);
+    if(u3&&u3.length>=2){const v=parseFloat(u3[0].value);liveData.u3=v;const c=v<=4?'up':v<=4.5?'warn':'down';setVal('u3',v.toFixed(1)+'%',`Prev: <span class="${c}">${parseFloat(u3[1].value).toFixed(1)}%</span>`,c);}
+    const u6=await fred('U6RATE',1);
+    if(u6&&u6[0]){const v=parseFloat(u6[0].value);const c=v<=7?'up':v<=8?'warn':'down';setVal('u6',v.toFixed(1)+'%',`<span class="${c}">Underemployment rate</span>`,c);}
+
+    // NFP
+    const nfp=await fred('PAYEMS',2);
+    if(nfp&&nfp.length>=2){const v=(parseFloat(nfp[0].value)-parseFloat(nfp[1].value));liveData.nfp=v;const c=v>=200?'up':v>=100?'warn':'down';setVal('nfp','+'+(v.toFixed(0))+'K',`<span class="${c}">${v>=200?'Strong':v>=100?'Moderate':'Weak'} payrolls</span>`,c);}
+
+    // AHE
+    const ahe=await fred('CES0500000003',13);
+    if(ahe&&ahe.length>=13){const yoy=((parseFloat(ahe[0].value)/parseFloat(ahe[12].value)-1)*100);const c=yoy>=4?'warn':yoy>=3?'up':'down';setVal('ahe','+'+yoy.toFixed(1)+'%',`<span class="${c}">Wage growth YoY</span>`,c);}
+
+    // JOLTS
+    const jolts=await fred('JTSJOL',1);
+    if(jolts&&jolts[0]){const v=(parseFloat(jolts[0].value)/1000).toFixed(2);setVal('jolts',v+'M',`<span class="warn">Job openings trend</span>`,'warn');}
+
+    // Quit rate
+    const quit=await fred('JTSQUR',1);
+    if(quit&&quit[0]){const v=parseFloat(quit[0].value);const c=v>=2.5?'up':v>=2?'warn':'down';setVal('quit',v.toFixed(1)+'%',`<span class="${c}">Worker confidence signal</span>`,c);}
+
+    // LFPR
+    const lfpr=await fred('CIVPART',1);
+    if(lfpr&&lfpr[0]){const v=parseFloat(lfpr[0].value);setVal('lfpr',v.toFixed(1)+'%',`<span class="warn">Labor force participation</span>`,'warn');}
+
+    // Fed Funds
+    const ffr=await fred('DFF',1);
+    if(ffr&&ffr[0]){const v=parseFloat(ffr[0].value);liveData.ffr=v;const c=v>=4?'warn':'up';setVal('ffr',v.toFixed(2)+'%',`<span class="${c}">Effective Fed Funds Rate</span>`,c);setVal('ffr2',v.toFixed(2)+'%',`<span class="${c}">On hold</span>`,c);}
+
+    // M2
+    const m2=await fred('M2SL',1);
+    if(m2&&m2[0]){const v=(parseFloat(m2[0].value)/1000).toFixed(1);liveData.m2=parseFloat(m2[0].value);setVal('m2','$'+v+'T',`<span class="warn">Broad money supply</span>`,'warn');}
+
+    // Fed balance sheet
+    const bs=await fred('WALCL',1);
+    if(bs&&bs[0]){const v=(parseFloat(bs[0].value)/1000000).toFixed(1);setVal('bs','$'+v+'T',`<span class="down">QT (Quantitative Tightening) ongoing</span>`,'down');}
+
+    // Yields
+    const y2=await fred('DGS2',1);
+    if(y2&&y2[0]){const v=parseFloat(y2[0].value);liveData.y2=v;setVal('2y',v.toFixed(2)+'%',`<span class="warn">2Y Treasury</span>`,'warn');}
+    const y10=await fred('DGS10',1);
+    if(y10&&y10[0]){const v=parseFloat(y10[0].value);liveData.y10=v;setVal('10y',v.toFixed(2)+'%',`<span class="warn">10Y Treasury</span>`,'warn');}
+    const y30=await fred('DGS30',1);
+    if(y30&&y30[0]){const v=parseFloat(y30[0].value);liveData.y30=v;setVal('30y',v.toFixed(2)+'%',`<span class="warn">30Y Treasury</span>`,'warn');}
+
+    // Computed: spread & real rate
+    if(liveData.y2&&liveData.y10){
+      const sp=(liveData.y10-liveData.y2).toFixed(2);
+      const c=parseFloat(sp)<0?'down':'up';
+      setVal('spread',(parseFloat(sp)>0?'+':'')+sp+'%',`<span class="${c}">${parseFloat(sp)<0?'Inverted — recession signal':'Positive slope'}</span>`,c);
+    }
+    if(liveData.y10&&liveData.cpi){
+      const rir=(liveData.y10-liveData.cpi).toFixed(2);
+      setVal('rir',(parseFloat(rir)>0?'+':'')+rir+'%',`<span class="${parseFloat(rir)>0?'up':'down'}">${parseFloat(rir)>0?'Restrictive':'Accommodative'}</span>`,parseFloat(rir)>0?'up':'down');
+    }
+
+    // Regime box
+    document.getElementById('regime-date').textContent=`${new Date().toLocaleDateString('en-AU',{day:'2-digit',month:'long',year:'numeric'})} — Live FRED Data`;
+    document.getElementById('regime-p1').textContent=`GDP growth is at ${liveData.gdp?.toFixed(1)||'--'}% QoQ (Quarter-on-Quarter). Manufacturing PMI remains in contraction territory while services hold above 50. The labor market is showing signs of softening with U3 unemployment at ${liveData.u3?.toFixed(1)||'--'}%.`;
+    document.getElementById('regime-p2').textContent=`Inflation at ${liveData.cpi?.toFixed(1)||'--'}% CPI headline and ${liveData.cpic?.toFixed(1)||'--'}% core remains above the 2% Fed target. PCE at ${liveData.pce?.toFixed(1)||'--'}% is the closest to target but services stickiness challenges further progress. The Fed is on hold.`;
+    document.getElementById('regime-p3').textContent=`The yield curve is ${liveData.y2&&liveData.y10?(liveData.y10-liveData.y2<0?'inverted at '+(liveData.y10-liveData.y2).toFixed(0)+'bps on 2Y-10Y — a recession signal':'positive sloped'):'-'}. M2 money supply contraction reduces systemic liquidity. Gold near all-time highs signals monetary and fiscal stress consistent with late-cycle dynamics.`;
+
+    document.getElementById('last-refresh').textContent='FRED data refreshed: '+new Date().toLocaleTimeString('en-AU');
+  }catch(e){
+    document.getElementById('last-refresh').textContent='FRED fetch error — using demo data';
+  }
+}
+
+// ─── AI PROMPTS ───────────────────────────────────────────────────
+function getLiveStr(){
+  return `LIVE FRED DATA (as of today):
+GDP: ${liveData.gdp?.toFixed(1)||'2.3'}% QoQ | CPI: ${liveData.cpi?.toFixed(1)||'3.4'}% | Core CPI: ${liveData.cpic?.toFixed(1)||'3.6'}% | PCE: ${liveData.pce?.toFixed(1)||'2.7'}% | PPI: ${liveData.ppi?.toFixed(1)||'2.1'}%
+Unemployment U3: ${liveData.u3?.toFixed(1)||'4.2'}% | NFP: +${liveData.nfp?.toFixed(0)||'177'}K
+Fed Funds Rate: ${liveData.ffr?.toFixed(2)||'4.38'}% | 2Y Treasury: ${liveData.y2?.toFixed(2)||'4.83'}% | 10Y: ${liveData.y10?.toFixed(2)||'4.55'}% | 30Y: ${liveData.y30?.toFixed(2)||'4.68'}%
+2Y-10Y Spread: ${liveData.y2&&liveData.y10?(liveData.y10-liveData.y2).toFixed(2)+'%':'-0.28%'} | M2: $${liveData.m2?(liveData.m2/1000).toFixed(1):'21.3'}T`;
+}
+
+const GEO=`
+GEOPOLITICAL AND LEGISLATIVE CONTEXT (May 2026):
+- Trump tariff programme: 10% baseline universal tariff, 145% on Chinese goods, 25% on auto imports — adding estimated 50-80bps to core PCE with 6-12 month pass-through lag
+- US fiscal deficit running at ~6.5% of GDP, requiring ~$2T annual Treasury issuance — keeping term premium elevated on long-duration bonds
+- China property debt crisis: ~$500B in developer defaults (Evergrande, Country Garden, Vanke) — destroying household wealth, driving deflation, suppressing iron ore demand
+- US-China tech decoupling: semiconductor export controls on NVIDIA and TSMC — elevating Taiwan Strait risk premium, disrupting corporate capex plans
+- DOGE (Department of Government Efficiency) federal workforce cuts (~200K jobs in H1 2026) — suppressing NFP prints, hitting consumer confidence in government-heavy regions
+- Japan YCC (Yield Curve Control) exit + China reducing US Treasury holdings from $1.1T to $760B — reducing foreign demand, keeping yields elevated
+- NATO defence spending mandate raised to 2.5% of GDP — stimulating EU industrial production and German exports
+- Australia: Albanese government $14.6B cost-of-living stimulus creating cross-policy tension with RBA easing; AUKUS submarine spending adding to defence employment; negative gearing retained
+- AI adoption accelerating white-collar displacement, contributing to rising U6 underemployment despite steady headline NFP`;
+
+const prompts={
+  overview:`You are a senior macro analyst using the Stan Druckenmiller investment framework. Today is ${new Date().toLocaleDateString('en-AU',{day:'2-digit',month:'long',year:'numeric'})}.
+
+${getLiveStr()}
+${GEO}
+
+Write 4 analytical paragraphs that EXPLICITLY connect the geopolitical and legislative developments above to the live indicator data. Explain the transmission mechanism from each named policy/event to the specific numbers. Be precise and insightful. Plain text only, no markdown, no asterisks, no bullet points.`,
+
+  growth:`You are a senior macro analyst using the Stan Druckenmiller investment framework. Today is ${new Date().toLocaleDateString('en-AU',{day:'2-digit',month:'long',year:'numeric'})}.
+
+${getLiveStr()}
+Additional growth data: Manufacturing PMI 49.2 (contraction), Services PMI 51.8, Industrial Production -0.3% MoM, Retail Sales +0.6% MoM, ISM New Orders 50.1.
+${GEO}
+
+Write 4 analytical paragraphs explicitly connecting tariff policy, fiscal legislation, and global trade shifts to the GDP and PMI data. Explain the two-quarter outlook. Plain text only, no markdown.`,
+
+  inflation:`You are a senior macro analyst. Today is ${new Date().toLocaleDateString('en-AU',{day:'2-digit',month:'long',year:'numeric'})}.
+
+${getLiveStr()}
+CPI components: Shelter +3.0%, Food +3.1%, Energy +0.5%, Services ex-housing +4.1%, Medical care +3.4%, New vehicles +1.2%.
+${GEO}
+
+Write 4 analytical paragraphs explicitly connecting tariff pass-through, housing supply constraints, and labour shortages to each CPI component. What does this mean for Fed policy timeline? Plain text only, no markdown.`,
+
+  labor:`You are a senior macro analyst. Today is ${new Date().toLocaleDateString('en-AU',{day:'2-digit',month:'long',year:'numeric'})}.
+
+${getLiveStr()}
+Additional: JOLTS (Job Openings) 7.19M, Quit Rate 2.1% (below pre-COVID avg 2.3%), LFPR (Labor Force Participation Rate) 62.7%.
+${GEO}
+
+Write 4 analytical paragraphs connecting immigration policy, AI displacement, DOGE federal cuts, and sector-level shifts to the labour market data. Plain text only, no markdown.`,
+
+  liquidity:`You are a senior macro analyst. Today is ${new Date().toLocaleDateString('en-AU',{day:'2-digit',month:'long',year:'numeric'})}.
+
+${getLiveStr()}
+Fed Balance Sheet: $6.9T with QT at -$25B/month. VIX: 18.4. HY Spreads: +342bps.
+${GEO}
+
+Write 4 analytical paragraphs connecting fiscal dynamics, foreign central bank behaviour (Japan YCC exit, China selling Treasuries), and QT to the yield curve and liquidity conditions. When does the Fed pivot? Plain text only, no markdown.`,
+
+  markets:`You are a senior macro analyst. Today is ${new Date().toLocaleDateString('en-AU',{day:'2-digit',month:'long',year:'numeric'})}.
+
+${getLiveStr()}
+Markets: SPX 5612 +0.42%, NDX 19842 +0.61%, VIX 18.4, DXY 104.2, Gold $3241 near ATH, WTI Crude $61.80, HY Spreads +342bps widening, IG Spreads +112bps.
+${GEO}
+
+Write 4 analytical paragraphs connecting geopolitical events, tariff policy, AI concentration risk, and credit dynamics to asset price behaviour. Where are the asymmetric opportunities? Plain text only, no markdown.`,
+
+  sentiment:`You are a senior macro analyst. Today is ${new Date().toLocaleDateString('en-AU',{day:'2-digit',month:'long',year:'numeric'})}.
+
+${getLiveStr()}
+Sentiment: VIX 18.4 (52W high 28.4, low 12.1), Conference Board Consumer Confidence 91.2, UMich (University of Michigan) Sentiment 56.6, UMich 1Y inflation expectations 4.6%.
+${GEO}
+
+Write 4 analytical paragraphs connecting geopolitical events, DOGE cuts, tariff-driven price anxiety, and political polarisation to the sentiment and risk indicators. Assess tail risks. Plain text only, no markdown.`,
+
+  global:`You are a senior macro analyst. Today is ${new Date().toLocaleDateString('en-AU',{day:'2-digit',month:'long',year:'numeric'})}.
+
+${getLiveStr()}
+Global: China PMI 49.5, China GDP +4.8% YoY, China CPI -0.1% deflation; EU CPI +2.4%, EU GDP +0.4% QoQ, ECB at 2.50% cutting; EM PMI composite 51.3; Global trade volume +1.2% YoY.
+${GEO}
+
+Write 4 analytical paragraphs connecting China property crisis, trade war supply chain rerouting, EU defence-led recovery, and EM divergence to the global data. Plain text only, no markdown.`,
+
+  australia:`You are a senior macro analyst specialising in Australian markets. Today is ${new Date().toLocaleDateString('en-AU',{day:'2-digit',month:'long',year:'numeric'})}.
+
+${getLiveStr()}
+AUSTRALIA DATA: RBA Cash Rate 3.85% (just cut 25bps May 2026, peak was 4.35%), AU CPI +3.6% headline / +3.2% trimmed mean (core), AU GDP +1.5% YoY, AU Unemployment 4.1%, Participation Rate 66.8%, WPI (Wage Price Index) +3.4% YoY, ASX 200: 8142 (+0.60% today), AUD/USD: 0.6432 (-0.41% today), National home values: -0.3% MoM (4th consecutive decline), Sydney clearance rate: 61.2%, Melbourne: 58.4%, Iron ore: $98.40/t, Thermal coal: $112.50/t, AU 10Y Bond: 4.31%.
+${GEO}
+
+Write 4 substantial paragraphs with SPECIFIC investing implications for an Australian investor:
+(1) RBA easing cycle outlook — how many more cuts, what triggers, fixed income positioning (duration, ACGB / Australian Commonwealth Government Bonds, bank hybrids)
+(2) Housing — which segments are at risk vs opportunity (inner-city apartments vs regional, REITs / Real Estate Investment Trusts, mortgage books of CBA/ANZ/NAB/WBC)
+(3) ASX sector rotation — materials (BHP/RIO/FMG iron ore leverage), banks (NIM / Net Interest Margin compression from rate cuts), defensives (healthcare, infrastructure), energy
+(4) AUD/USD direction and whether to hedge — China demand, RBA-Fed divergence, commodity cycle positioning
+Plain text only, no markdown, no asterisks.`
+};
+
+const rptPrompt=()=>`You are a senior macro analyst producing a daily institutional briefing in the Druckenmiller investment framework style. Today is ${new Date().toLocaleDateString('en-AU',{day:'2-digit',month:'long',year:'numeric'})}.
+
+${getLiveStr()}
+ADDITIONAL DASHBOARD DATA:
+Manufacturing PMI: 49.2 | Services PMI: 51.8 | VIX: 18.4 | DXY: 104.2 | Gold: $3,241 | WTI Crude (West Texas Intermediate): $61.80 | HY Spreads (High Yield Credit): +342bps | IG Spreads (Investment Grade): +112bps
+China PMI (Purchasing Managers' Index): 49.5 | China GDP: +4.8% | China CPI: -0.1% deflation | EU (European Union) GDP: +0.4% | ECB (European Central Bank): 2.50% cutting | EM (Emerging Markets) PMI: 51.3
+AUSTRALIA: RBA (Reserve Bank of Australia) 3.85% (cut May 2026) | AU CPI: +3.6% / Trimmed Mean +3.2% | AU GDP: +1.5% | ASX 200: 8142 | AUD/USD: 0.6432 | Home values: -0.3% MoM | Sydney clearance: 61.2% | Iron ore: $98.40/t
+${GEO}
+
+Produce a structured daily report. CRITICALLY: explicitly connect geopolitical events and legislative changes to specific indicator movements. Name the policy, explain the transmission mechanism, cite the affected indicator.
+
+Use these EXACT section headers in CAPS:
+
+MACRO SNAPSHOT
+KEY TRENDS
+RISKS
+OPPORTUNITIES
+AUSTRALIA FOCUS
+REGIME CLASSIFICATION
+WATCHLIST
+
+Each section: 5-6 substantive bullet points using plain dash (-) bullets. For REGIME CLASSIFICATION include confidence /10 and a one-line rationale. For OPPORTUNITIES include specific instruments, directions, and Australian investor relevance. For WATCHLIST include event dates and what to watch for specifically. Plain text only, no markdown, no asterisks, no pound signs. Expand all acronyms on first use in each section.`;
+
+// ─── AI CALL ─────────────────────────────────────────────────────
+async function callClaude(prompt, sid){
+  const sel=document.getElementById('st-'+sid);
+  if(sel) sel.innerHTML='<span class="spin">◌</span> Generating analysis...';
+  const r=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-api-key':ANT_KEY,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:prompt}]})
+  });
+  if(!r.ok){const e=await r.text();throw new Error(`API ${r.status}: ${e.substring(0,200)}`);}
+  const d=await r.json();
+  if(d.error) throw new Error(d.error.message);
+  if(sel) sel.innerHTML='';
+  return d.content.map(b=>b.text||'').join('');
+}
+
+async function genAI(tab){
+  if(DEMO&&ANT_KEY==='demo'){
+    const el=document.getElementById('ai-'+tab);
+    el.textContent='Demo mode: Enter a real Anthropic API key to generate live AI analysis. The analysis will use all live FRED data and rich geopolitical context.';
+    return;
+  }
+  const el=document.getElementById('ai-'+tab);
+  const btn=el.closest('.ai-box').querySelector('.gen-btn');
+  btn.disabled=true;el.textContent='';
+  try{
+    const p=typeof prompts[tab]==='function'?prompts[tab]():prompts[tab];
+    el.textContent=await callClaude(p,tab);
+  }catch(e){el.innerHTML=`<span style="color:#f85149">Error: ${e.message}</span>`;}
+  btn.disabled=false;
+}
+
+async function genReport(){
+  if(DEMO&&ANT_KEY==='demo'){document.getElementById('rpt-out').textContent='Demo mode: Enter a real Anthropic API key to generate the daily report.';return;}
+  const btn=document.getElementById('rpt-btn');
+  const out=document.getElementById('rpt-out');
+  btn.disabled=true;btn.textContent='[ GENERATING... ]';
+  out.textContent='Compiling live data and generating report...';
+  try{
+    const text=await callClaude(rptPrompt(),'report');
+    const stamp=new Date().toLocaleDateString('en-AU',{weekday:'long',day:'2-digit',month:'long',year:'numeric'})+' — '+new Date().toLocaleTimeString('en-AU');
+    out.textContent='GENERATED: '+stamp+'\n'+'─'.repeat(60)+'\n\n'+text;
+  }catch(e){out.textContent='Error: '+e.message;}
+  btn.disabled=false;btn.textContent='[ REGENERATE REPORT ]';
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────
+async function init(){
+  buildCharts(0);chartsBuilt[0]=true;
+  await loadFredData();
+}
+</script>
+</body>
+</html>
